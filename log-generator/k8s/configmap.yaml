@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-generator-config
+  namespace: log-generator
+data:
+  LOG_FILE_PATH: "/var/log/app/app.log"
+  BATCH_SIZE: "1000"      # 每批次日志数
+  THREADS: "4"            # 生成线程数
+  ENABLE_STDOUT: "true"   # 是否输出到标准输出
+  ENABLE_FILE: "true"     # 是否输出到文件
+  LOGS_PER_SECOND: "10"   # 每秒生成的日志数量 

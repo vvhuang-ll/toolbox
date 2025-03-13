@@ -1,0 +1,43 @@
+ ---
+# Source: filebeat/templates/filebeat-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: beats
+  labels:
+    k8s-app: filebeat
+ 
+---
+# Source: filebeat/templates/filebeat-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+  labels:
+    k8s-app: filebeat
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  - nodes
+  verbs:
+  - get
+  - watch
+  - list
+ 
+---
+# Source: filebeat/templates/filebeat-role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+  namespace: beats
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io

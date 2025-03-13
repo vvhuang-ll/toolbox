@@ -1,0 +1,72 @@
+apiVersion: v1
+data:
+  agent.yaml: |
+    data_dir: /vector-data-dir
+    api:
+      enabled: true
+      address: 127.0.0.1:8686
+      playground: false
+    sources:
+      kubernetes_logs:
+        type: kubernetes_logs
+        extra_namespace_label_selector: "app=log"
+      logfile:
+        type: file
+        read_from: beginning
+        include:
+         - "/var/log/app/**/*.log"
+      host_metrics:
+        filesystem:
+          devices:
+            excludes: [binfmt_misc]
+          filesystems:
+            excludes: [binfmt_misc]
+          mountpoints:
+            excludes: ["*/proc/sys/fs/binfmt_misc"]
+        type: host_metrics
+      internal_metrics:
+        type: internal_metrics
+    transforms:
+      extract_k8s_metadata:
+        type: remap
+        inputs: [logfile]
+        source: |
+          parts = split!(.file, "/")
+          .kubernetes = {
+            "pod_namespace": parts[4],
+            "deployment": parts[5],
+            "pod_name": parts[6],
+            "file_path": .file
+          }
+    sinks:
+      prom_exporter:
+        type: prometheus_exporter
+        inputs: [host_metrics, internal_metrics]
+        address: 0.0.0.0:9090
+      stdout:
+        type: console
+        inputs: [extract_k8s_metadata]
+        encoding:
+          codec: json
+      kafka_output:
+        type: kafka
+        inputs: [extract_k8s_metadata]
+        bootstrap_servers: "kafka-test.default.svc.cluster.local:9092"
+        topic: "k8s-logs-{{ kubernetes.pod_namespace }}"
+        encoding:
+          codec: json
+        compression: gzip
+        key_field: .kubernetes.pod_name
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: vector
+    meta.helm.sh/release-namespace: vector
+  labels:
+    app.kubernetes.io/component: Agent
+    app.kubernetes.io/instance: vector
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: vector
+    app.kubernetes.io/version: 0.45.0-distroless-libc
+  name: vector
+  namespace: vector

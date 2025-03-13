@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-generator
+  namespace: log-generator
+  labels:
+    app: log-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-generator
+  template:
+    metadata:
+      labels:
+        app: log-generator
+    spec:
+      containers:
+      - name: log-generator
+        image: huangqw/log-generator:v1.4
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: DEPLOYMENT_NAME
+          value: log-generator
+        envFrom:
+        - configMapRef:
+            name: log-generator-config
+        volumeMounts:
+        - name: log-volume
+          mountPath: /var/log/app
+          subPathExpr: $(POD_NAMESPACE)/$(DEPLOYMENT_NAME)/$(POD_NAME)
+      volumes:
+      - name: log-volume
+        hostPath:
+          path: /var/log/app
+          type: DirectoryOrCreate

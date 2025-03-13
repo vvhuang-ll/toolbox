@@ -1,0 +1,45 @@
+apiVersion: v1
+data:
+  filebeat.yml: |-
+    setup.ilm.enabled: false
+    scan_frequency: 10s
+    ignore_older: 3h
+    clean_inactive: 6h
+    filebeat.inputs:
+    - type: container
+      containers.ids:
+      - "*"
+      paths:
+        - /var/log/containers/*.log
+      max_bytes: 102400
+      processors:
+        - add_kubernetes_metadata:
+            default_indexers.enabled: true
+            default_matchers.enabled: true
+            in_cluster: true
+            host: ${NODE_NAME}
+            matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+        - drop_fields:
+            fields: ["host", "kubernetes.node.labels", "tags", "ecs", "prospector", "agent", "input", "beat"]
+            ignore_missing: true
+        - fingerprint:
+            fields: ["log.offset", "log.file.path"]
+            target_field: "@metadata._id"
+
+      multiline.pattern: '^[[:space:]]+(at|\.{3})\b|^Caused by:'
+      multiline.negate: false
+      multiline.match: after
+
+
+    output.kafka:
+      hosts: ["kafka-test.default.svc.cluster.local:9092"]
+      topic: "filebeat-logs"
+      compression: gzip
+kind: ConfigMap
+metadata:
+  labels:
+    k8s-app: filebeat
+  name: filebeat-config
+  namespace: beats
